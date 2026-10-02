@@ -88,11 +88,21 @@ export function usePgnNavigation({
     setSelectedPly({ line: 'main', index: targetIndex })
   }, [overviewPgnDisplay, mode, overview])
 
+  // Reset to head whenever we enter failed mode so a stale selectedPly from
+  // focus-mode navigation doesn't leave isAtHead false (disabling Hint/Solution).
+  useEffect(() => {
+    if (mode === 'failed') setSelectedPly(null)
+  }, [mode])
+
+  const lastLiveIdx = (livePgnDisplay?.mainline.length ?? 0) - 1
+  const liveLastMoveIsWrong = livePgnDisplay !== null && livePgnDisplay.mainline[lastLiveIdx]?.moveStatus === 'wrong'
   const isAtHead =
     selectedPly === null ||
     (livePgnDisplay !== null &&
       selectedPly.line === 'main' &&
-      selectedPly.index === livePgnDisplay.mainline.length - 1)
+      (liveLastMoveIsWrong
+        ? selectedPly.index === lastLiveIdx - 1 && lastLiveIdx >= 1
+        : selectedPly.index === lastLiveIdx))
 
   return { pgnDisplay, selectedPly, setSelectedPly, isAtHead }
 }

@@ -494,11 +494,32 @@ export function resolveDisplayBoard(
   }
 
   if (selectedPly === null || focusPgnDisplay === null) return board
-  const isAtHeadPly =
-    selectedPly.line === 'main' && selectedPly.index === focusPgnDisplay.mainline.length - 1
-  if (isAtHeadPly) return board
+
+  // Subvariation clicks in live solving show that wrong position with a locked board.
+  if (selectedPly.line === 'subvariation') {
+    const svPly = focusPgnDisplay.subvariations?.[selectedPly.subIndex]?.[selectedPly.index]
+    if (!svPly) return board
+    return {
+      ...board,
+      fen: svPly.fen,
+      lastMove: [svPly.from, svPly.to],
+      dests: new Map(),
+      moveFeedback: { result: 'wrong', square: svPly.to, visible: true },
+    }
+  }
+
   const ply = focusPgnDisplay.mainline[selectedPly.index]
   if (!ply) return board
+
+  // When the last mainline move is wrong (reverted on the board), the effective live
+  // position is the move before it. Clicking that move should return the live board.
+  const lastIdx = focusPgnDisplay.mainline.length - 1
+  const lastMoveIsWrong = focusPgnDisplay.mainline[lastIdx]?.moveStatus === 'wrong'
+  const isAtHeadPly = lastMoveIsWrong
+    ? selectedPly.index === lastIdx - 1 && lastIdx >= 1
+    : selectedPly.index === lastIdx
+  if (isAtHeadPly) return board
+
   const feedbackResult: MoveFeedbackResult | null =
     ply.moveStatus === 'correct' ? 'correct' : ply.moveStatus === 'wrong' ? 'wrong' : null
   return {

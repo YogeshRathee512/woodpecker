@@ -88,6 +88,48 @@ describe('resolveDisplayBoard — focus mode', () => {
   })
 })
 
+const SV_FEN = 'rnbqkbnr/ppp1pppp/3p4/8/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2'
+
+const PGN_WITH_SUBVARIATION: TrainingItemMetaPgnDisplay = {
+  mainline: [
+    { san: 'e4', uci: 'e2e4', fen: PLY_1_FEN, from: 'e2', to: 'e4', moveNumber: 1, isWhite: true, moveStatus: 'opponent' },
+  ],
+  subvariations: [
+    [{ san: 'd6', uci: 'd7d6', fen: SV_FEN, from: 'd7', to: 'd6', moveNumber: 1, isWhite: false, moveStatus: 'wrong' }],
+  ],
+}
+
+describe('resolveDisplayBoard — focus/failed mode with wrong moves', () => {
+  it('shows wrong move FEN and locks board when wrong move at mainline head is selected', () => {
+    const ply: PlySelection = { line: 'main', index: 1 }
+    const result = resolveDisplayBoard(BASE_BOARD, 'focus', ply, PGN_WITH_WRONG, null, null)
+    expect(result.fen).toBe(PLY_2_FEN)
+    expect(result.lastMove).toEqual(['d7', 'd6'])
+    expect(result.dests.size).toBe(0)
+    expect(result.moveFeedback.result).toBe('wrong')
+  })
+
+  it('returns live board when effective head (ply before wrong move) is selected', () => {
+    const ply: PlySelection = { line: 'main', index: 0 }
+    const result = resolveDisplayBoard(BASE_BOARD, 'focus', ply, PGN_WITH_WRONG, null, null)
+    expect(result).toBe(BASE_BOARD)
+  })
+
+  it('shows subvariation wrong move FEN and locks board', () => {
+    const ply: PlySelection = { line: 'subvariation', subIndex: 0, index: 0 }
+    const result = resolveDisplayBoard(BASE_BOARD, 'focus', ply, PGN_WITH_SUBVARIATION, null, null)
+    expect(result.fen).toBe(SV_FEN)
+    expect(result.dests.size).toBe(0)
+    expect(result.moveFeedback.result).toBe('wrong')
+  })
+
+  it('returns board unchanged for out-of-bounds subvariation index', () => {
+    const ply: PlySelection = { line: 'subvariation', subIndex: 99, index: 0 }
+    const result = resolveDisplayBoard(BASE_BOARD, 'focus', ply, PGN_WITH_SUBVARIATION, null, null)
+    expect(result).toBe(BASE_BOARD)
+  })
+})
+
 describe('resolveDisplayBoard — overview mode', () => {
   it('clears dests and returns base board when no ply and no attempt', () => {
     const result = resolveDisplayBoard(BASE_BOARD, 'overview', null, null, null, null)

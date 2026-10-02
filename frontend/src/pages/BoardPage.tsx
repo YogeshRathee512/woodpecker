@@ -1,4 +1,5 @@
 import * as React from 'react'
+import { cn } from '../lib/utils'
 import { useLocation, useNavigate, useParams, useSearch } from '@tanstack/react-router'
 import { useAuth } from '../context/auth'
 import { Clock, CheckCircle2, XCircle, ClockArrowUp, ClockArrowDown, ExternalLink, Lightbulb, Eye, Loader2 } from 'lucide-react'
@@ -162,14 +163,13 @@ function OverviewModeRightColumn({
   isTransitioning,
 }: OverviewModeRightColumnProps): React.ReactElement {
   const topSlot = source !== null ? (
-    <div className="relative">
-      <div className={isTransitioning ? 'pointer-events-none opacity-40 blur-sm' : ''}>
+    <div className="relative flex min-h-0 flex-1 flex-col">
+      <div className={cn('flex min-h-0 flex-1 flex-col', isTransitioning ? 'pointer-events-none opacity-40 blur-sm' : '')}>
         <TrainingItemMetaCard
           source={source}
           pgnDisplay={pgnDisplay}
           trainingItemId={metaCardTrainingItemId}
           focusMode={false}
-          fillHeight={false}
           selectedPly={selectedPly}
           onPlyClick={onPlyClick}
         />
@@ -387,7 +387,7 @@ export function BoardPage(): React.ReactElement | null {
         ctrl.board,
         ctrl.mode,
         selectedPly,
-        ctrl.mode === 'focus' ? pgnDisplay : null,
+        (ctrl.mode === 'focus' || ctrl.mode === 'failed') ? pgnDisplay : null,
         selectedAttempt,
         ctrl.mode === 'overview' ? pgnDisplay : overviewPgnDisplay,
       ),
