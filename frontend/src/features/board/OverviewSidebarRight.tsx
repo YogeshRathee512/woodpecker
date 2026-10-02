@@ -34,28 +34,33 @@ export function OverviewSidebarRight({
   showTable,
 }: OverviewSidebarRightProps): React.ReactElement {
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-2">
-      <div className="min-h-0 flex-1 overflow-y-auto">
-        <div className="flex flex-col gap-4">
+    <div className="flex min-h-0 flex-1 flex-col">
+      {topSlot != null && (
+        <div className="min-h-0 overflow-y-auto">
           {topSlot}
-          {showTable && (
-            <OverviewAttemptHistoryTable
-              trainingItemId={trainingItemId}
-              currentUser={currentUser}
-              selectedAttemptId={selectedAttemptId}
-              onRowClick={onRowClick}
-              onUserFilterChange={onUserFilterChange}
-            />
-          )}
         </div>
+      )}
+      {showTable && (
+        <div className="mt-2 shrink-0">
+          <OverviewAttemptHistoryTable
+            trainingItemId={trainingItemId}
+            currentUser={currentUser}
+            selectedAttemptId={selectedAttemptId}
+            onRowClick={onRowClick}
+            onUserFilterChange={onUserFilterChange}
+          />
+        </div>
+      )}
+      <div className="flex-1" />
+      <div className="shrink-0">
+        <OverviewActionsSection
+          nextPuzzleDisabledReason={nextPuzzleDisabledReason}
+          isLoadingNextPuzzle={isLoadingNextPuzzle}
+          gameUrl={analyzeUrl}
+          onNextPuzzle={onNextPuzzle}
+          onRetake={onRetake}
+        />
       </div>
-      <OverviewActionsSection
-        nextPuzzleDisabledReason={nextPuzzleDisabledReason}
-        isLoadingNextPuzzle={isLoadingNextPuzzle}
-        gameUrl={analyzeUrl}
-        onNextPuzzle={onNextPuzzle}
-        onRetake={onRetake}
-      />
     </div>
   )
 }

@@ -26,6 +26,29 @@ export const ChartContainer = React.forwardRef<
   const uid = React.useId()
   const chartId = `chart-${id ?? uid.replace(/:/g, '')}`
 
+  const innerRef = React.useRef<HTMLDivElement>(null)
+  const [hasSize, setHasSize] = React.useState(false)
+
+  const mergedRef = React.useCallback(
+    (el: HTMLDivElement | null) => {
+      innerRef.current = el
+      if (typeof ref === 'function') ref(el)
+      else if (ref !== null && ref !== undefined)
+        (ref as React.MutableRefObject<HTMLDivElement | null>).current = el
+    },
+    [ref],
+  )
+
+  React.useEffect(() => {
+    const el = innerRef.current
+    if (!el) return
+    const check = () => setHasSize(el.offsetWidth > 0 && el.offsetHeight > 0)
+    check()
+    const observer = new ResizeObserver(check)
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [])
+
   const cssVars = Object.entries(config)
     .filter(([, v]) => v.color)
     .map(([k, v]) => `[data-chart=${chartId}]{--color-${k}:${v.color}}`)
@@ -35,7 +58,7 @@ export const ChartContainer = React.forwardRef<
     <ChartContext.Provider value={{ config }}>
       <div
         data-chart={chartId}
-        ref={ref}
+        ref={mergedRef}
         className={cn(
           'flex justify-center text-xs [&_.recharts-cartesian-axis-tick_text]:fill-muted-foreground [&_.recharts-cartesian-grid_line]:stroke-border/50 [&_.recharts-rectangle.recharts-tooltip-cursor]:fill-muted [&_.recharts-sector]:outline-none [&_.recharts-surface]:outline-none',
           className,
@@ -43,9 +66,11 @@ export const ChartContainer = React.forwardRef<
         {...props}
       >
         {cssVars && <style dangerouslySetInnerHTML={{ __html: cssVars }} />}
-        <RechartsPrimitive.ResponsiveContainer width="100%" height="100%" minWidth={0}>
-          {children}
-        </RechartsPrimitive.ResponsiveContainer>
+        {hasSize && (
+          <RechartsPrimitive.ResponsiveContainer width="100%" height="100%" minWidth={0}>
+            {children}
+          </RechartsPrimitive.ResponsiveContainer>
+        )}
       </div>
     </ChartContext.Provider>
   )
