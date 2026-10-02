@@ -42,7 +42,7 @@ function parsePositiveInt(value: unknown): number | null {
 }
 
 export function BoardPage(): React.ReactElement | null {
-  const { user, updateUser } = useAuth()
+  const { user } = useAuth()
   const isDesktop = useIsDesktop()
   const showTenths = user?.showTimerTenths ?? true
   const ZERO_TIMER = formatTimer(0, showTenths)
@@ -64,15 +64,6 @@ export function BoardPage(): React.ReactElement | null {
   }, [routeKind, search.attempt])
 
   const playSound = useBoardSounds(user?.soundEnabled ?? false, user?.soundTheme ?? 'standard')
-
-  const handleToggleSound = React.useCallback((pressed: boolean): void => {
-    if (!user) return
-    const prev = user
-    updateUser({ ...prev, soundEnabled: pressed })
-    void api.settings.update({ soundEnabled: pressed })
-      .then(updateUser)
-      .catch(() => updateUser(prev))
-  }, [user, updateUser])
 
   const ctrl = useBoardPageController({
     runId,
@@ -707,8 +698,6 @@ export function BoardPage(): React.ReactElement | null {
       timerBar={timerBar}
       overlay={overlayNode}
       spectateLabel={spectateLabelNode}
-      soundEnabled={user?.soundEnabled ?? false}
-      onToggleSound={user !== null ? handleToggleSound : undefined}
       pieceSetId={user?.pieceTheme}
       animationDuration={user?.animationDurationMs ?? 150}
     />

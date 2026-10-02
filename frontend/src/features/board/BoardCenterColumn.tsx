@@ -1,6 +1,4 @@
 import * as React from 'react'
-import { Volume2, VolumeOff } from 'lucide-react'
-import { Toggle } from '../../components/ui/toggle'
 import { BoardSurface } from './BoardSurface'
 import { BoardResizeHandle } from './BoardResizeHandle'
 import { SessionAttemptStrip } from '../../components/SessionAttemptStrip'
@@ -23,8 +21,6 @@ type BoardCenterColumnProps = {
   timerBar?: { leftPct: number; color: string; tooltipText: string } | null
   overlay?: React.ReactNode
   spectateLabel?: React.ReactNode
-  soundEnabled?: boolean
-  onToggleSound?: (pressed: boolean) => void
   pieceSetId?: string
   animationDuration?: number
 }
@@ -43,8 +39,6 @@ export function BoardCenterColumn({
   timerBar,
   overlay,
   spectateLabel,
-  soundEnabled = false,
-  onToggleSound,
   pieceSetId,
   animationDuration,
 }: BoardCenterColumnProps): React.ReactElement {
@@ -100,19 +94,6 @@ export function BoardCenterColumn({
         <div className="min-w-0 flex-1">
           <SessionAttemptStrip items={attemptHistory} runId={runId} activeAttemptId={activeAttemptId} interactive={stripInteractive} pulseActive={pulseActive} noMargin />
         </div>
-        {onToggleSound !== undefined && (
-          <Toggle
-            size="sm"
-            variant="outline"
-            pressed={soundEnabled}
-            onPressedChange={onToggleSound}
-            aria-label={soundEnabled ? 'Mute board sounds' : 'Unmute board sounds'}
-            className="shrink-0 h-6 gap-1 px-2 text-xs"
-          >
-            {soundEnabled ? <Volume2 className="h-3 w-3" /> : <VolumeOff className="h-3 w-3" />}
-            {soundEnabled ? 'Sound' : 'Muted'}
-          </Toggle>
-        )}
       </div>
       {mobileExtras && (
         <div className="lg:hidden">
