@@ -36,7 +36,7 @@ export function OverviewSidebarRight({
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       {topSlot != null && (
-        <div className="min-h-0 overflow-y-auto">
+        <div className="min-h-0 flex-1 flex flex-col">
           {topSlot}
         </div>
       )}
@@ -51,8 +51,8 @@ export function OverviewSidebarRight({
           />
         </div>
       )}
-      <div className="flex-1" />
-      <div className="shrink-0">
+      {topSlot == null && <div className="flex-1" />}
+      <div className="mt-3 shrink-0">
         <OverviewActionsSection
           nextPuzzleDisabledReason={nextPuzzleDisabledReason}
           isLoadingNextPuzzle={isLoadingNextPuzzle}

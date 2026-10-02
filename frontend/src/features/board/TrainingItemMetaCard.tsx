@@ -676,8 +676,12 @@ function PgnDisplayBlock({
 
   // When at head (no explicit selection), treat the last mainline move as the
   // current position so it is highlighted and scrolled into view.
+  const lastIdx = pgnDisplay.mainline.length - 1
+  // When the last mainline move is a wrong move and no ply is explicitly selected,
+  // the board has already reverted to the pre-wrong-move position. Point headIndex
+  // at the move before the wrong move so the highlight matches the board.
   const headIndex = (selectedPly === null || selectedPly === undefined) && pgnDisplay.mainline.length > 0
-    ? pgnDisplay.mainline.length - 1
+    ? (pgnDisplay.mainline[lastIdx]?.moveStatus === 'wrong' ? (lastIdx > 0 ? lastIdx - 1 : undefined) : lastIdx)
     : undefined
 
   // Only the first opponent move gets the puzzle-start orange ring.
@@ -978,7 +982,6 @@ export function TrainingItemMetaCard({
   focusMode = false,
   selectedPly,
   onPlyClick,
-  fillHeight = false,
 }: TrainingItemMetaCardProps): React.ReactElement {
   React.useEffect(() => {
     if (!onPlyClick || !pgnDisplay) return
@@ -1006,17 +1009,17 @@ export function TrainingItemMetaCard({
     return () => document.removeEventListener('keydown', handleKeyDown)
   }, [onPlyClick, selectedPly, pgnDisplay])
 
-  const heightConstrained = focusMode || fillHeight
   return (
     <div className={cn(
-      'flex flex-col gap-3 overflow-hidden rounded-md border border-border px-3 pt-3',
+      'flex min-h-0 flex-1 flex-col gap-3 overflow-hidden rounded-md border border-border px-3 pt-3',
       pgnDisplay !== null && pgnDisplay.mainline.length > 0 ? 'pb-0' : 'pb-3',
-      heightConstrained && 'h-fit max-h-full',
     )}>
-      <SourceSection source={source} focusMode={focusMode} runPosition={runPosition} opening={source.opening} trainingItemId={trainingItemId} />
+      <div className="shrink-0">
+        <SourceSection source={source} focusMode={focusMode} runPosition={runPosition} opening={source.opening} trainingItemId={trainingItemId} />
+      </div>
       {pgnDisplay !== null && pgnDisplay.mainline.length > 0 && (
-        <div className={cn('-mx-3 border-t border-border', heightConstrained && 'flex-1 min-h-0 flex flex-col')}>
-          <PgnDisplayBlock pgnDisplay={pgnDisplay} selectedPly={selectedPly} onPlyClick={onPlyClick} scrollable={heightConstrained} />
+        <div className="-mx-3 flex min-h-0 flex-1 flex-col border-t border-border">
+          <PgnDisplayBlock pgnDisplay={pgnDisplay} selectedPly={selectedPly} onPlyClick={onPlyClick} scrollable={true} />
           {!focusMode && source.sourceType === 'DECOY' && (
             <DecoyEvalSection source={source} selectedPly={selectedPly} pgnDisplay={pgnDisplay} />
           )}
