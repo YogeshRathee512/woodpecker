@@ -1,6 +1,7 @@
 import * as React from 'react'
 import { AppLogo } from './AppLogo'
 import { ThemeToggle } from './ThemeToggle'
+import { SoundToggle } from './SoundToggle'
 import { UserMenu } from './UserMenu'
 import { useSidebar } from './ui/sidebar'
 import { cn } from '../lib/utils'
@@ -13,6 +14,7 @@ export function SolveHeader(): React.ReactElement {
     <header className="flex h-14 shrink-0 items-center justify-between border-b border-border px-4">
       <AppLogo iconClassName="h-5 w-5" textClassName="text-sm" />
       <div className="flex items-center gap-1 sm:hidden">
+        <SoundToggle />
         <ThemeToggle />
         <button
           type="button"
@@ -33,6 +35,7 @@ export function SolveHeader(): React.ReactElement {
         >
           <img src="/github.svg" alt="GitHub" className="h-4 w-4 dark:invert" />
         </a>
+        <SoundToggle />
         <ThemeToggle />
         <UserMenu />
       </div>
