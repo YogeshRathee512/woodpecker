@@ -123,7 +123,7 @@ const columns: ColumnDef<StockFeatures, RunTrainingItemListItem>[] = [
     enableSorting: false,
     cell: ({ row }) => {
       const src = row.original.source
-      if (src.sourceType === 'LICHESS_TACTIC') {
+      if (src.sourceType === 'LICHESS_TACTIC' || src.sourceType === 'LICHESS_FAILED_PUZZLE') {
         return <span className="tabular-nums">{src.rating}</span>
       }
       if (src.sourceType === 'SCRAPED_POSITIONAL') {
@@ -186,7 +186,7 @@ export function RunTrainingItemTable({ runId, runIdStr, isActive }: Props): Reac
       cell: ({ row }) => {
         const item = row.original
         const src = item.source
-        const externalUrl = src.sourceType === 'LICHESS_TACTIC'
+        const externalUrl = src.sourceType === 'LICHESS_TACTIC' || src.sourceType === 'LICHESS_FAILED_PUZZLE'
           ? `https://lichess.org/training/${src.displayId}`
           : src.sourceType === 'SCRAPED_POSITIONAL'
             ? src.lichessUrl

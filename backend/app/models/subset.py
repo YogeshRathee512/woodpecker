@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, Integer, String
+from sqlalchemy import DateTime, ForeignKey, Index, Integer, String, text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
@@ -21,9 +21,22 @@ class Subset(Base):
     )
     locked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     locked_puzzle_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    is_private: Mapped[bool] = mapped_column(nullable=False, default=False, server_default="false")
+    is_failed_puzzle_collection: Mapped[bool] = mapped_column(
+        nullable=False, default=False, server_default="false"
+    )
 
     training_items: Mapped[list["SubsetTrainingItem"]] = relationship(
         "SubsetTrainingItem", order_by="SubsetTrainingItem.position", cascade="all, delete-orphan"
+    )
+
+    __table_args__ = (
+        Index(
+            "uq_subsets_failed_puzzle_collection_owner",
+            "user_id",
+            unique=True,
+            postgresql_where=text("is_failed_puzzle_collection"),
+        ),
     )
 
 

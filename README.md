@@ -39,6 +39,8 @@ Open [http://localhost:5173](http://localhost:5173) and sign in with your Liches
 
 On subsequent starts, `make up` is enough (no rebuild needed).
 
+To sync a private failed-puzzle archive, configure `LICHESS_PUZZLE_ACTIVITY_TOKEN` as described in [Failed puzzle archive](docs/failed-puzzles.md).
+
 `make seed-dev` imports openings, Lichess tactics (themes + puzzles), and scraped positional puzzles, each bounded by `SEED_DEV_LIMIT` (default: 10 000). Override with `make seed-dev SEED_DEV_LIMIT=1000`.
 
 ### Windows

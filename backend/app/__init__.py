@@ -15,6 +15,7 @@ from app.routes.admin import admin_bp
 from app.routes.auth import auth_bp
 from app.routes.dashboard import dashboard_bp
 from app.routes.health import health_bp
+from app.routes.failed_puzzles import failed_puzzles_bp
 from app.routes.leaderboard import leaderboard_bp
 from app.routes.openings import openings_bp
 from app.routes.runs import runs_bp
@@ -95,6 +96,7 @@ def create_app() -> Flask:
             db.session.rollback()
 
     app.register_blueprint(health_bp)
+    app.register_blueprint(failed_puzzles_bp)
     app.register_blueprint(auth_bp)
     app.register_blueprint(settings_bp)
     app.register_blueprint(subsets_bp)

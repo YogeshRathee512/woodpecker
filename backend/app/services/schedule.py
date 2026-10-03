@@ -58,6 +58,9 @@ def _get_accessible_schedule(schedule_id: int, user_id: int) -> Schedule:
         raise NotFoundError("Schedule not found", "The requested schedule does not exist or has been deleted.")
     if schedule.locked_at is None and schedule.user_id != user_id:
         raise ForbiddenError("Access denied", "You do not have permission to perform this action.")
+    subset = db.session.get(Subset, schedule.subset_id)
+    if subset is not None and subset.is_private and subset.user_id != user_id:
+        raise ForbiddenError("Access denied", "You do not have permission to perform this action.")
     return schedule
 
 
@@ -70,6 +73,8 @@ def create_schedule(user_id: int, name: str, subset_id: int) -> Schedule:
         raise NotFoundError("Subset not found", "The requested subset does not exist or has been deleted.")
     if subset.locked_at is None:
         raise ValidationError("Subset not ready", "The subset must be locked before you can create a schedule from it.")
+    if subset.is_private and subset.user_id != user_id:
+        raise ForbiddenError("Access denied", "You do not have permission to use this private subset.")
     schedule = Schedule(user_id=user_id, subset_id=subset_id, name=name, config=DEFAULT_CONFIG)
     db.session.add(schedule)
     db.session.commit()
@@ -132,17 +137,24 @@ def delete_schedule(schedule_id: int, user_id: int) -> None:
     db.session.commit()
 
 
-def suggest_schedules(limit: int = 8) -> list[dict[str, object]]:
+def suggest_schedules(limit: int = 8, user_id: int | None = None) -> list[dict[str, object]]:
     rows = db.session.scalars(
-        sa.select(Schedule).order_by(Schedule.created_at.desc()).limit(limit)
+        sa.select(Schedule)
+        .join(Subset, Subset.id == Schedule.subset_id)
+        .where(sa.or_(Subset.is_private.is_(False), Subset.user_id == user_id))
+        .order_by(Schedule.created_at.desc()).limit(limit)
     ).all()
     return [{"id": s.id, "name": s.name, "status": s.status} for s in rows]
 
 
-def search_schedules(q: str, limit: int = 10) -> list[dict[str, object]]:
+def search_schedules(q: str, limit: int = 10, user_id: int | None = None) -> list[dict[str, object]]:
     rows = db.session.scalars(
         sa.select(Schedule)
-        .where(Schedule.name.ilike(f"%{q}%"))
+        .join(Subset, Subset.id == Schedule.subset_id)
+        .where(
+            sa.or_(Subset.is_private.is_(False), Subset.user_id == user_id),
+            Schedule.name.ilike(f"%{q}%"),
+        )
         .order_by(Schedule.name)
         .limit(limit)
     ).all()
@@ -208,9 +220,9 @@ def list_schedules(
     if paginator is None:
         paginator = Paginator(page=1, page_size=20)
     if locked_only:
-        access_clause = "s.locked_at IS NOT NULL"
+        access_clause = "s.locked_at IS NOT NULL AND (sub.is_private IS FALSE OR sub.user_id = :uid)"
     else:
-        access_clause = "(s.locked_at IS NOT NULL OR s.user_id = :uid)"
+        access_clause = "(s.user_id = :uid OR (s.locked_at IS NOT NULL AND sub.is_private IS FALSE))"
 
     params: dict[str, object] = {"uid": user_id}
     conditions: list[str] = [access_clause]

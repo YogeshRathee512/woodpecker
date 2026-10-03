@@ -237,7 +237,7 @@ function TacticMeta({
 }: {
   focusMode: boolean
   runPosition: number | undefined
-  badge: 'LICHESS_TACTIC' | 'SCRAPED_POSITIONAL'
+  badge: 'LICHESS_TACTIC' | 'LICHESS_FAILED_PUZZLE' | 'SCRAPED_POSITIONAL'
   ratingLabel: React.ReactNode
   opening: OpeningInfo | null
   themes: Array<{ name: string; displayName: string | null; description?: string | null }>
@@ -304,7 +304,7 @@ function LichessTacticSection({
   opening,
   trainingItemId,
 }: {
-  source: LichessTacticSourceMetadata
+  source: LichessTacticSourceMetadata | Extract<SourceMetadata, { sourceType: 'LICHESS_FAILED_PUZZLE' }>
   focusMode: boolean
   runPosition: number | undefined
   opening: OpeningInfo | null
@@ -314,7 +314,7 @@ function LichessTacticSection({
     <TacticMeta
       focusMode={focusMode}
       runPosition={runPosition}
-      badge="LICHESS_TACTIC"
+      badge={source.sourceType}
       ratingLabel={source.rating}
       opening={opening}
       themes={source.themes}
@@ -818,6 +818,9 @@ function SourceSection({
   if (source.sourceType === 'LICHESS_TACTIC') {
     return <LichessTacticSection source={source} focusMode={focusMode} runPosition={runPosition} opening={opening} trainingItemId={trainingItemId} />
   }
+  if (source.sourceType === 'LICHESS_FAILED_PUZZLE') {
+    return <LichessTacticSection source={source} focusMode={focusMode} runPosition={runPosition} opening={opening} trainingItemId={trainingItemId} />
+  }
   if (source.sourceType === 'SCRAPED_POSITIONAL') {
     return <ScrapedPositionalSection source={source} focusMode={focusMode} runPosition={runPosition} opening={opening} trainingItemId={trainingItemId} />
   }
@@ -841,7 +844,7 @@ type TrainingItemMetaCardProps = {
 type PuzzleSummary = {
   puzzleId: string | number
   ratingDisplay: string | number
-  sourceType: 'LICHESS_TACTIC' | 'SCRAPED_POSITIONAL' | 'DECOY' | null
+  sourceType: 'LICHESS_TACTIC' | 'LICHESS_FAILED_PUZZLE' | 'SCRAPED_POSITIONAL' | 'DECOY' | null
 }
 
 function resolvePuzzleSummary(source: SourceMetadata, trainingItemId: number | undefined): PuzzleSummary {
@@ -850,6 +853,13 @@ function resolvePuzzleSummary(source: SourceMetadata, trainingItemId: number | u
       puzzleId: trainingItemId ?? source.displayId,
       ratingDisplay: source.rating,
       sourceType: 'LICHESS_TACTIC',
+    }
+  }
+  if (source.sourceType === 'LICHESS_FAILED_PUZZLE') {
+    return {
+      puzzleId: trainingItemId ?? source.displayId,
+      ratingDisplay: source.rating,
+      sourceType: 'LICHESS_FAILED_PUZZLE',
     }
   }
   if (source.sourceType === 'SCRAPED_POSITIONAL') {

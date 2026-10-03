@@ -66,6 +66,7 @@ class RunTrainingItem(Base):
 
     __table_args__ = (
         UniqueConstraint("run_id", "position", name="uq_run_training_item_position"),
+        Index("ix_run_training_items_training_item_id", "training_item_id"),
     )
 
 

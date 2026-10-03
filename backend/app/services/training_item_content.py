@@ -11,6 +11,7 @@ from sqlalchemy.orm import selectinload
 from app.exceptions import NotFoundError
 from app.extensions import db
 from app.models.decoy_puzzle import DecoyPuzzle
+from app.models.failed_puzzle import FailedPuzzle
 from app.models.game import SourceGame
 from app.models.lichess_tactic import LichessTactic
 from app.models.opening import Opening
@@ -60,6 +61,24 @@ class LichessTacticMetadata(SourceMetadata):
             "gameUrl": self.game_url,
             "themes": self.themes,
             "opening": self.opening,
+        }
+
+
+@dataclass
+class FailedLichessPuzzleMetadata(SourceMetadata):
+    display_id: str
+    rating: int
+    game_url: str
+    themes: list[dict[str, str | None]] = field(default_factory=list)
+
+    def to_api_dict(self) -> dict[str, object]:
+        return {
+            "sourceType": "LICHESS_FAILED_PUZZLE",
+            "displayId": self.display_id,
+            "rating": self.rating,
+            "gameUrl": self.game_url,
+            "themes": self.themes,
+            "opening": None,
         }
 
 
@@ -119,6 +138,10 @@ _HANDLERS: dict[TrainingItemSource, tuple[
 
 def _register_handlers() -> None:
     _HANDLERS[TrainingItemSource.LICHESS_TACTIC] = (_lichess_tactic_payload, _lichess_tactic_payload_batch)
+    _HANDLERS[TrainingItemSource.LICHESS_FAILED_PUZZLE] = (
+        _failed_lichess_payload,
+        _failed_lichess_payload_batch,
+    )
     _HANDLERS[TrainingItemSource.SCRAPED_POSITIONAL] = (_scraped_positional_payload, _scraped_positional_payload_batch)
     _HANDLERS[TrainingItemSource.DECOY] = (_decoy_payload, _decoy_payload_batch)
 
@@ -129,6 +152,10 @@ def _load_payload(training_item_id: int) -> TrainingItemPayload:
     if ti is None:
         raise NotFoundError("Puzzle not found", "The requested puzzle could not be found.")
     return _dispatch(ti)
+
+
+def clear_payload_cache() -> None:
+    _load_payload.cache_clear()
 
 
 def get_content(training_item_id: int) -> TrainingItemPayload:
@@ -178,6 +205,32 @@ def _lichess_tactic_payload(training_item_id: int) -> TrainingItemPayload:
             game_url=tactic.game_url,
             themes=[{"name": t.name, "displayName": t.display_name, "description": t.description} for t in tactic.themes],
             opening=_opening_dict(tactic.openings[-1]) if tactic.openings else None,
+        ),
+    )
+
+
+def _failed_lichess_payload(training_item_id: int) -> TrainingItemPayload:
+    puzzle = db.session.execute(
+        sa.select(FailedPuzzle).where(FailedPuzzle.training_item_id == training_item_id)
+    ).scalar_one()
+    return _build_failed_lichess_payload(puzzle)
+
+
+def _failed_lichess_payload_batch(training_item_ids: list[int]) -> dict[int, TrainingItemPayload]:
+    puzzles = db.session.execute(
+        sa.select(FailedPuzzle).where(FailedPuzzle.training_item_id.in_(training_item_ids))
+    ).scalars().all()
+    return {p.training_item_id: _build_failed_lichess_payload(p) for p in puzzles if p.training_item_id is not None}
+
+
+def _build_failed_lichess_payload(puzzle: FailedPuzzle) -> TrainingItemPayload:
+    return TrainingItemPayload(
+        contract=SolveContract(fen=puzzle.fen, plies=_parse_moves(puzzle.fen, puzzle.moves)),
+        metadata=FailedLichessPuzzleMetadata(
+            display_id=puzzle.puzzle_id,
+            rating=puzzle.rating,
+            game_url=puzzle.lichess_url,
+            themes=[{"name": theme, "displayName": theme, "description": None} for theme in puzzle.themes],
         ),
     )
 

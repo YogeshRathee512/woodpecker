@@ -5,6 +5,7 @@ from app.decorators import login_required
 from app.exceptions import NotFoundError
 from app.extensions import db
 from app.models.schedule import Schedule
+from app.models.subset import Subset
 from app.models.user import User
 from app.services import schedule as schedule_svc
 from app.services import training as training_svc
@@ -24,7 +25,7 @@ def _load_creator(schedule: Schedule) -> User:
 @login_required
 def suggest_schedules() -> Response:
     limit = min(20, max(1, int(request.args.get("limit", "8"))))
-    return jsonify(schedule_svc.suggest_schedules(limit=limit))
+    return jsonify(schedule_svc.suggest_schedules(limit=limit, user_id=session["user_id"]))
 
 
 @schedules_bp.get("/search")
@@ -34,7 +35,7 @@ def search_schedules() -> Response:
     limit = min(50, max(1, int(request.args.get("limit", "10"))))
     if not q:
         return jsonify([])
-    return jsonify(schedule_svc.search_schedules(q, limit=limit))
+    return jsonify(schedule_svc.search_schedules(q, limit=limit, user_id=session["user_id"]))
 
 
 @schedules_bp.get("/by-ids")
@@ -44,7 +45,14 @@ def get_schedules_by_ids() -> Response:
     ids = [int(x) for x in ids_raw.split(",") if x.strip().isdigit()]
     if not ids:
         return jsonify([])
-    rows = db.session.scalars(sa.select(Schedule).where(Schedule.id.in_(ids))).all()
+    rows = db.session.scalars(
+        sa.select(Schedule)
+        .join(Subset, Schedule.subset_id == Subset.id)
+        .where(
+            Schedule.id.in_(ids),
+            sa.or_(Subset.is_private.is_(False), Subset.user_id == session["user_id"]),
+        )
+    ).all()
     return jsonify([{"id": s.id, "name": s.name, "status": s.status} for s in rows])
 
 

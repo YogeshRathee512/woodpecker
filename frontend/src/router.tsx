@@ -33,6 +33,7 @@ import { AdminUsersPage } from './pages/AdminUsersPage'
 import { AdminWaitlistPage } from './pages/AdminWaitlistPage'
 import { AdminWhitelistPage } from './pages/AdminWhitelistPage'
 import { AdminWhitelistNewPage } from './pages/AdminWhitelistNewPage'
+import { FailedPuzzlesPage } from './pages/FailedPuzzlesPage'
 type RouterContext = {
   auth: AuthContextValue
 }
@@ -162,6 +163,13 @@ const profileRoute = createRoute({
   path: '/profile',
   staticData: { crumb: { group: 'User', leaf: 'Profile' } },
   component: ProfilePage,
+})
+
+const failedPuzzlesRoute = createRoute({
+  getParentRoute: () => appShellRoute,
+  path: '/failed-puzzles',
+  staticData: { crumb: { group: 'Activity', leaf: 'Failed Puzzles' } },
+  component: FailedPuzzlesPage,
 })
 
 const subsetsListRoute = createRoute({
@@ -385,6 +393,7 @@ const routeTree = rootRoute.addChildren([
       dashboardRoute,
       settingsRoute,
       profileRoute,
+      failedPuzzlesRoute,
       subsetsListRoute,
       subsetNewRoute,
       subsetRoute,

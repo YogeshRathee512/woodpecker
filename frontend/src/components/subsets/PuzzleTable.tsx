@@ -91,7 +91,7 @@ function LabelBadges({ items }: { items: { name: string; displayName?: string | 
 
 function OpeningCell({ row }: { row: TrainingItemRow }): React.ReactElement {
   const opening =
-    row.sourceType === 'LICHESS_TACTIC'
+    row.sourceType === 'LICHESS_TACTIC' || row.sourceType === 'LICHESS_FAILED_PUZZLE'
       ? (row.openings[1] ?? row.openings[0] ?? null)
       : row.opening
 
@@ -256,7 +256,7 @@ export function PuzzleTable({ subsetId, locked, onTotalChange }: PuzzleTableProp
       header: ({ column }) => <SortHeader column={column} label="Rating / Level" />,
       meta: { className: 'min-w-32' } satisfies ColMeta,
       cell: ({ row }) =>
-        row.original.sourceType === 'LICHESS_TACTIC' ? (
+        row.original.sourceType === 'LICHESS_TACTIC' || row.original.sourceType === 'LICHESS_FAILED_PUZZLE' ? (
           <span className="tabular-nums">{row.original.rating}</span>
         ) : row.original.sourceType === 'DECOY' ? (
           <span className="text-muted-foreground">—</span>
@@ -288,7 +288,7 @@ export function PuzzleTable({ subsetId, locked, onTotalChange }: PuzzleTableProp
       enableSorting: false,
       meta: { className: locked ? 'sticky right-0 bg-background' : 'sticky right-14 bg-background' } satisfies ColMeta,
       cell: ({ row }) => {
-        const url = row.original.sourceType === 'LICHESS_TACTIC'
+        const url = row.original.sourceType === 'LICHESS_TACTIC' || row.original.sourceType === 'LICHESS_FAILED_PUZZLE'
           ? row.original.gameUrl
           : row.original.sourceType === 'SCRAPED_POSITIONAL'
           ? row.original.lichessUrl

@@ -1,4 +1,5 @@
 from app.models.decoy_puzzle import DecoyPuzzle
+from app.models.failed_puzzle import FailedPuzzle, FailedPuzzleActivity, FailedPuzzleSyncState
 from app.models.game import Game, SourceGame
 from app.models.lichess_tactic import (
     LichessTactic,
@@ -31,6 +32,9 @@ from app.models.user import User, WaitlistEntry, WhitelistEntry
 
 __all__ = [
     "DecoyPuzzle",
+    "FailedPuzzle",
+    "FailedPuzzleActivity",
+    "FailedPuzzleSyncState",
     "DecoySourceRunMetadata",
     "Game",
     "LichessTactic",

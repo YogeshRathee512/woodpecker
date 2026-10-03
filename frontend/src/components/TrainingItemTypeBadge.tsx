@@ -21,6 +21,7 @@ export type TrainingItemType = 'tactic' | 'positional' | 'decoy'
 
 const SOURCE_TO_TYPE: Record<TrainingItemSource, TrainingItemType> = {
   LICHESS_TACTIC: 'tactic',
+  LICHESS_FAILED_PUZZLE: 'tactic',
   SCRAPED_POSITIONAL: 'positional',
   DECOY: 'decoy',
 }

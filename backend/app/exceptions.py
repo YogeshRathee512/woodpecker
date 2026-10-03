@@ -36,3 +36,9 @@ class ForbiddenError(AppError):
     """Raised when the authenticated user lacks permission (HTTP 403)."""
 
     status_code = 403
+
+
+class ExternalServiceError(AppError):
+    """An upstream service failed in a way the user can retry later."""
+
+    status_code = 502

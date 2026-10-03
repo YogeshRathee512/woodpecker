@@ -149,6 +149,11 @@ def create_training(user_id: int, schedule_id: int) -> Training:
         raise NotFoundError("Schedule not found", "The requested schedule does not exist or has been deleted.")
     if schedule.locked_at is None:
         raise ValidationError("Schedule not ready", "The schedule must be locked before you can enrol in it.")
+    subset = db.session.get(Subset, schedule.subset_id)
+    if subset is None:
+        raise NotFoundError("Subset not found", "The schedule's subset could not be found.")
+    if subset.is_private and subset.user_id != user_id:
+        raise ForbiddenError("Access denied", "You do not have permission to train on this private subset.")
 
     existing = db.session.scalar(
         sa.select(Training).where(

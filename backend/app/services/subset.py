@@ -43,6 +43,7 @@ def subset_to_dict(subset: Subset, owner: User | None = None) -> dict[str, objec
         "config": subset.config,
         "createdAt": subset.created_at.isoformat(),
         "lockedAt": subset.locked_at.isoformat() if subset.locked_at else None,
+        "isPrivate": subset.is_private,
     }
     if owner is not None:
         d["ownedBy"] = user_ref(owner)
@@ -128,6 +129,18 @@ def _validate_config(config: dict[str, object]) -> None:
                     "Invalid subset reference",
                     f"Subset {sid} does not exist or is not locked.",
                 )
+        private_ids = {
+            row.id
+            for row in db.session.execute(
+                sa.text("SELECT id FROM subsets WHERE id = ANY(:ids) AND is_private IS TRUE"),
+                {"ids": ref_ids},
+            ).all()
+        } if ref_ids else set()
+        if private_ids:
+            raise ValidationError(
+                "Private subset reference",
+                "Private collections cannot be used as sources for another subset.",
+            )
         for sid in exclude_ids:
             if sid not in locked_ids:
                 raise ValidationError(
@@ -725,6 +738,7 @@ def list_active_puzzles(
     lichess_ti_ids = [r.training_item_id for r in ti_rows if r.source_type == "LICHESS_TACTIC"]
     positional_ti_ids = [r.training_item_id for r in ti_rows if r.source_type == "SCRAPED_POSITIONAL"]
     decoy_ti_ids = [r.training_item_id for r in ti_rows if r.source_type == "DECOY"]
+    failed_ti_ids = [r.training_item_id for r in ti_rows if r.source_type == "LICHESS_FAILED_PUZZLE"]
 
     # ── Lichess tactics ──────────────────────────────────────────────────────
     lichess_rows = db.session.execute(
@@ -816,6 +830,16 @@ def list_active_puzzles(
 
     decoy_by_ti: dict[int, Any] = {r.training_item_id: r for r in decoy_rows}
 
+    failed_rows = db.session.execute(
+        sa.text("""
+            SELECT training_item_id, puzzle_id, lichess_url, rating, themes
+            FROM failed_puzzles
+            WHERE training_item_id = ANY(:ids) AND removed_from_collection IS FALSE
+        """),
+        {"ids": failed_ti_ids},
+    ).all() if failed_ti_ids else []
+    failed_by_ti: dict[int, Any] = {r.training_item_id: r for r in failed_rows}
+
     # ── Assemble in original page order ─────────────────────────────────────
     puzzles: list[dict[str, object]] = []
     for ti_row in ti_rows:
@@ -869,6 +893,22 @@ def list_active_puzzles(
                 "bestCp": r.best_cp,
                 "analysisUrl": r.analysis_url,
                 "opening": opening,
+            })
+        elif ti_row.source_type == "LICHESS_FAILED_PUZZLE":
+            r = failed_by_ti.get(ti_id)
+            if r is None:
+                continue
+            puzzles.append({
+                "sourceType": "LICHESS_FAILED_PUZZLE",
+                "trainingItemId": ti_id,
+                "puzzleId": r.puzzle_id,
+                "rating": r.rating,
+                "gameUrl": r.lichess_url,
+                "themes": [
+                    {"name": theme, "displayName": theme, "description": None}
+                    for theme in (r.themes or [])
+                ],
+                "openings": [],
             })
 
     return {"puzzles": puzzles, "page": page, "pageSize": PAGE_SIZE, "totalPages": total_pages, "total": total}
@@ -1074,6 +1114,31 @@ def _decoy_stats(training_item_ids: list[int]) -> dict[str, object]:
     }
 
 
+def _failed_puzzle_stats(training_item_ids: list[int]) -> dict[str, object]:
+    if not training_item_ids:
+        return {"count": 0, "avgRating": 0, "themes": []}
+    rows = db.session.execute(
+        sa.text("""
+            SELECT rating, themes
+            FROM failed_puzzles
+            WHERE training_item_id = ANY(:ids) AND removed_from_collection IS FALSE
+        """),
+        {"ids": training_item_ids},
+    ).all()
+    theme_counts: dict[str, int] = {}
+    for row in rows:
+        for theme in row.themes or []:
+            theme_counts[theme] = theme_counts.get(theme, 0) + 1
+    return {
+        "count": len(rows),
+        "avgRating": round(sum(row.rating for row in rows) / len(rows)) if rows else 0,
+        "themes": [
+            {"name": name, "displayName": name, "count": count}
+            for name, count in sorted(theme_counts.items(), key=lambda item: (-item[1], item[0]))
+        ],
+    }
+
+
 def get_stats(subset_id: int, user_id: int) -> dict[str, object]:
     subset = _get_viewable_subset(subset_id, user_id)
 
@@ -1114,29 +1179,41 @@ def get_stats(subset_id: int, user_id: int) -> dict[str, object]:
     if "DECOY" in configured_sources or "DECOY" in by_source:
         sources_out["DECOY"] = _decoy_stats(by_source.get("DECOY", []))
 
+    if "LICHESS_FAILED_PUZZLE" in by_source:
+        sources_out["LICHESS_FAILED_PUZZLE"] = _failed_puzzle_stats(
+            by_source["LICHESS_FAILED_PUZZLE"]
+        )
+
     return {"sources": sources_out, "totalActive": total}
 
-def suggest_subsets(limit: int = 8) -> list[dict[str, object]]:
+def suggest_subsets(limit: int = 8, user_id: int | None = None) -> list[dict[str, object]]:
     rows = db.session.scalars(
-        sa.select(Subset).order_by(Subset.created_at.desc()).limit(limit)
+        sa.select(Subset)
+        .where(Subset.is_private.is_(False), Subset.is_failed_puzzle_collection.is_(False))
+        .order_by(Subset.created_at.desc()).limit(limit)
     ).all()
     return [{"id": s.id, "name": s.name, "status": subset_status(s)} for s in rows]
 
 
-def search_subsets(q: str, limit: int = 10) -> list[dict[str, object]]:
+def search_subsets(q: str, limit: int = 10, user_id: int | None = None) -> list[dict[str, object]]:
     rows = db.session.scalars(
         sa.select(Subset)
-        .where(Subset.name.ilike(f"%{q}%"))
+        .where(Subset.is_private.is_(False), Subset.is_failed_puzzle_collection.is_(False), Subset.name.ilike(f"%{q}%"))
         .order_by(Subset.name)
         .limit(limit)
     ).all()
     return [{"id": s.id, "name": s.name, "status": subset_status(s)} for s in rows]
 
 
-def get_subsets_by_ids(ids: list[int]) -> list[dict[str, object]]:
+def get_subsets_by_ids(ids: list[int], user_id: int | None = None) -> list[dict[str, object]]:
     if not ids:
         return []
-    rows = db.session.scalars(sa.select(Subset).where(Subset.id.in_(ids))).all()
+    rows = db.session.scalars(
+        sa.select(Subset).where(
+            Subset.id.in_(ids),
+            sa.or_(Subset.is_private.is_(False), Subset.user_id == user_id),
+        )
+    ).all()
     return [{"id": s.id, "name": s.name, "status": subset_status(s)} for s in rows]
 
 
@@ -1166,9 +1243,9 @@ def list_subsets(
     if paginator is None:
         paginator = Paginator(page=1, page_size=20)
     if locked_only:
-        access_clause = "sub.locked_at IS NOT NULL"
+        access_clause = "sub.locked_at IS NOT NULL AND (sub.is_private IS FALSE OR sub.user_id = :uid)"
     else:
-        access_clause = "(sub.user_id = :uid OR (sub.locked_at IS NOT NULL AND sub.user_id != :uid))"
+        access_clause = "(sub.user_id = :uid OR (sub.locked_at IS NOT NULL AND sub.is_private IS FALSE))"
 
     params: dict[str, object] = {"uid": user_id}
     conditions: list[str] = [access_clause]
@@ -1216,7 +1293,7 @@ def list_subsets(
         sa.text(f"""
             SELECT sub.id, sub.name, sub.config,
                    COALESCE(sub.locked_puzzle_count, sub.puzzle_count) AS puzzle_count,
-                   sub.created_at, sub.locked_at,
+                   sub.created_at, sub.locked_at, sub.is_private,
                    u.id AS owner_id, u.display_name, u.avatar_url, u.last_seen_at, u.country_code,
                    CASE
                        WHEN sub.locked_at IS NOT NULL THEN 'locked'
@@ -1243,6 +1320,7 @@ def list_subsets(
             "config": row.config,
             "createdAt": row.created_at.isoformat(),
             "lockedAt": row.locked_at.isoformat() if row.locked_at else None,
+            "isPrivate": bool(row.is_private),
             "ownedBy": user_ref_from_row(int(row.owner_id), row.display_name, row.avatar_url, row.last_seen_at, row.country_code),
         }
         if locked_only:
@@ -1254,12 +1332,14 @@ def list_subsets(
 
 def list_subset_runs(
     subset_id: int,
+    user_id: int,
     paginator: Paginator,
     user_ids: FilterList | None = None,
     schedule_ids: FilterList | None = None,
     search: str | None = None,
     sort: SortParam | None = None,
 ) -> dict[str, object]:
+    _get_viewable_subset(subset_id, user_id)
     params: dict[str, object] = {"subset_id": subset_id}
     conditions: list[str] = ["s.subset_id = :subset_id", "r.aborted_at IS NULL"]
 
@@ -1391,6 +1471,8 @@ def _get_owned_subset(subset_id: int, user_id: int) -> Subset:
         raise NotFoundError("Subset not found", "The requested subset does not exist or has been deleted.")
     if subset.user_id != user_id:
         raise ForbiddenError("Access denied", "You do not have permission to perform this action.")
+    if subset.is_failed_puzzle_collection:
+        raise ConflictError("Managed subset", "This subset is managed by the failed-puzzle archive.")
     return subset
 
 
@@ -1398,6 +1480,6 @@ def _get_viewable_subset(subset_id: int, user_id: int) -> Subset:
     subset = db.session.get(Subset, subset_id)
     if subset is None:
         raise NotFoundError("Subset not found", "The requested subset does not exist or has been deleted.")
-    if subset.user_id != user_id and subset.locked_at is None:
+    if subset.user_id != user_id and (subset.locked_at is None or subset.is_private):
         raise ForbiddenError("Access denied", "You do not have permission to perform this action.")
     return subset

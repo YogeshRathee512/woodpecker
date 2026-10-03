@@ -1,4 +1,5 @@
 docs/*
+!docs/failed-puzzles.md
 !docs/agents/
 !docs/agents/**
 !docs/adr/

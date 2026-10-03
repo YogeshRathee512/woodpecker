@@ -7,6 +7,7 @@ from flask import Flask
 from flask.testing import FlaskClient
 
 _TRUNCATE_TABLES = (
+    "failed_puzzle_sync_states, failed_puzzle_activities, failed_puzzles, "
     "training_attempts, run_training_items, runs, trainings, "
     "schedules, subset_training_items, subsets, users, lichess_tactics, training_items, "
     "lichess_tactics_source_run_metadata, lichess_tactic_themes, "

@@ -13,7 +13,7 @@ subsets_bp = Blueprint("subsets", __name__, url_prefix="/subsets")
 @login_required
 def suggest_subsets() -> Response:
     limit = min(20, max(1, int(request.args.get("limit", "8"))))
-    return jsonify(subset_svc.suggest_subsets(limit=limit))
+    return jsonify(subset_svc.suggest_subsets(limit=limit, user_id=session["user_id"]))
 
 
 @subsets_bp.get("/search")
@@ -23,7 +23,7 @@ def search_subsets() -> Response:
     limit = min(50, max(1, int(request.args.get("limit", "10"))))
     if not q:
         return jsonify([])
-    return jsonify(subset_svc.search_subsets(q, limit=limit))
+    return jsonify(subset_svc.search_subsets(q, limit=limit, user_id=session["user_id"]))
 
 
 @subsets_bp.get("/by-ids")
@@ -31,7 +31,7 @@ def search_subsets() -> Response:
 def get_subsets_by_ids() -> Response:
     ids_raw = request.args.get("ids", "")
     ids = [int(x) for x in ids_raw.split(",") if x.strip().isdigit()]
-    return jsonify(subset_svc.get_subsets_by_ids(ids))
+    return jsonify(subset_svc.get_subsets_by_ids(ids, session["user_id"]))
 
 
 @subsets_bp.post("")
@@ -143,6 +143,7 @@ def list_subset_runs(subset_id: int) -> tuple[Response, int] | Response:
     sort = q.sort_param({"startedAt": "r.started_at"})
     result = subset_svc.list_subset_runs(
         subset_id,
+        session["user_id"],
         paginator=q.paginator,
         user_ids=q.int_filter("userId"),
         schedule_ids=q.int_filter("scheduleId"),

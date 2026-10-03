@@ -125,8 +125,75 @@ export type Subset = {
   config: SubsetConfig | null
   createdAt: string
   lockedAt: string | null
+  isPrivate?: boolean
   ownedBy: UserRef
   hasTrained?: boolean
+}
+
+export type FailedPuzzle = {
+  id: number
+  puzzleId: string
+  lichessUrl: string
+  source: string
+  firstFailedAt: string
+  lastFailedAt: string
+  failureCount: number
+  latestActivityAt: string
+  latestResult: 'solved' | 'failed'
+  rating: number
+  themes: string[]
+  fen: string
+  moves: string
+  removedFromCollection: boolean
+  trainingAttempts: number
+  trainingSolved: number
+  trainingFailed: number
+  trainingSuccessRate: number | null
+  firstAttemptedAt: string | null
+  lastAttemptedAt: string | null
+  firstSolvedAt: string | null
+  lastSolvedAt: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+export type FailedPuzzlePage = {
+  items: FailedPuzzle[]
+  page: number
+  pageSize: number
+  total: number
+  totalPages: number
+}
+
+export type FailedPuzzleSettings = {
+  lichessUsername: string
+  tokenConfigured: boolean
+  lastSyncAt: string | null
+  oldestKnownActivity: string | null
+  oldestKnownActivity: string | null
+  newestKnownActivity: string | null
+  lastSyncNewCount: number
+  newPuzzlesSinceLastSync: number
+  archivedCount: number
+  activeCount: number
+  removedCount: number
+  trainingAttempts: number
+  trainingSolved: number
+  trainingFailed: number
+  trainingSuccessRate: number | null
+}
+
+export type FailedPuzzleSyncResult = {
+  completedAt: string
+  activitiesChecked: number
+  failedPuzzleIdsDiscovered: number
+  alreadyKnown: number
+  newFailures: number
+  addedToCollection: number
+  previouslyRemoved: number
+  activityEventsRecorded: number
+  oldestActivityReturned: string | null
+  fullRescan: boolean
 }
 
 export type LichessTacticSourceConfig = {
@@ -174,6 +241,15 @@ export type LichessTacticSourceMetadata = {
   gameUrl: string
   themes: LichessTacticTheme[]
   opening: TrainingItemOpening | null
+}
+
+export type FailedLichessPuzzleSourceMetadata = {
+  sourceType: 'LICHESS_FAILED_PUZZLE'
+  displayId: string
+  rating: number
+  gameUrl: string
+  themes: LichessTacticTheme[]
+  opening: null
 }
 
 export type ScrapedPositionalSourceMetadata = {
@@ -248,7 +324,7 @@ export type DecoyPage = {
   total: number
 }
 
-export type SourceMetadata = LichessTacticSourceMetadata | ScrapedPositionalSourceMetadata | DecoySourceMetadata
+export type SourceMetadata = LichessTacticSourceMetadata | FailedLichessPuzzleSourceMetadata | ScrapedPositionalSourceMetadata | DecoySourceMetadata
 
 export type LichessTactic = {
   trainingItemId: number
@@ -284,7 +360,17 @@ export type DecoyRow = {
   opening: TrainingItemOpening | null
 }
 
-export type TrainingItemRow = LichessTacticRow | ScrapedPositionalRow | DecoyRow
+export type FailedLichessPuzzleRow = {
+  trainingItemId: number
+  sourceType: 'LICHESS_FAILED_PUZZLE'
+  puzzleId: string
+  rating: number
+  gameUrl: string
+  themes: LichessTacticTheme[]
+  openings: []
+}
+
+export type TrainingItemRow = LichessTacticRow | FailedLichessPuzzleRow | ScrapedPositionalRow | DecoyRow
 
 export type SortColumn = 'rating' | 'popularity' | 'nb_plays'
 export type SortOrder = 'asc' | 'desc'
@@ -329,11 +415,18 @@ export type DecoyStats = {
   openings: { name: string; displayName: string; count: number }[]
 }
 
+export type FailedPuzzleStats = {
+  count: number
+  avgRating: number
+  themes: { name: string; displayName: string; count: number }[]
+}
+
 export type SubsetStats = {
   sources: {
     LICHESS_TACTIC?: LichessTacticStats
     SCRAPED_POSITIONAL?: ScrapedPositionalStats
     DECOY?: DecoyStats
+    LICHESS_FAILED_PUZZLE?: FailedPuzzleStats
   }
   totalActive: number
 }
@@ -350,7 +443,7 @@ export type Opening = {
   eco: string | null
 }
 
-export type TrainingItemSource = 'LICHESS_TACTIC' | 'DECOY' | 'SCRAPED_POSITIONAL'
+export type TrainingItemSource = 'LICHESS_TACTIC' | 'LICHESS_FAILED_PUZZLE' | 'DECOY' | 'SCRAPED_POSITIONAL'
 
 export type SourceListItem = {
   sourceType: TrainingItemSource
@@ -1169,6 +1262,22 @@ export const api = {
       request<AuthUser>('/settings', { method: 'PATCH', body: JSON.stringify(payload) }),
     refreshCountry: (): Promise<AuthUser> =>
       request<AuthUser>('/settings/refresh-country', { method: 'POST' }),
+  },
+  failedPuzzles: {
+    list: (page = 1, pageSize = 25, includeRemoved = false, search = ''): Promise<FailedPuzzlePage> =>
+      request(`/failed-puzzles?page=${page}&pageSize=${pageSize}&includeRemoved=${includeRemoved}&q=${encodeURIComponent(search)}`),
+    getSettings: (): Promise<FailedPuzzleSettings> => request('/failed-puzzles/settings'),
+    sync: (fullRescan = false): Promise<FailedPuzzleSyncResult> =>
+      request('/failed-puzzles/sync', {
+        method: 'POST',
+        body: JSON.stringify({ fullRescan }),
+      }),
+    remove: (id: number): Promise<FailedPuzzle> =>
+      request(`/failed-puzzles/${id}/remove`, { method: 'POST' }),
+    restore: (id: number): Promise<FailedPuzzle> =>
+      request(`/failed-puzzles/${id}/restore`, { method: 'POST' }),
+    import: (payload: { exportVersion: number; puzzles: FailedPuzzle[] }): Promise<{ imported: number; skipped: number; received: number }> =>
+      request('/failed-puzzles/import', { method: 'POST', body: JSON.stringify(payload) }),
   },
   subsets: {
     list: (params: TableParams): Promise<{ items: Subset[]; total: number }> =>

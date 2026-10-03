@@ -1,7 +1,7 @@
 import * as React from 'react'
 import { Link, useNavigate, useRouterState } from '@tanstack/react-router'
 import { useSidebar } from './ui/sidebar'
-import { ChevronsUpDown, LayoutDashboard, ScrollText, BookOpenText, Settings, LogOut, Play, User, Trophy, Clock, Users, UserCheck } from 'lucide-react'
+import { ChevronsUpDown, LayoutDashboard, ScrollText, BookOpenText, Settings, LogOut, Play, User, Trophy, Clock, Users, UserCheck, RotateCcw } from 'lucide-react'
 import { CONCEPT_ICONS } from '../lib/icons'
 import { toast } from '../lib/toast'
 import { useAuth } from '../context/auth'
@@ -45,6 +45,7 @@ const ACTIVITY_ITEMS: NavItem[] = [
   { label: 'Dashboard', to: '/app', icon: LayoutDashboard },
   { label: 'Leaderboards', to: '/app/leaderboards', icon: Trophy },
   { label: 'Training', to: '/app/training', icon: CONCEPT_ICONS.Training, search: (prev) => ({ ...prev, userId: 'me' }) },
+  { label: 'Failed Puzzles', to: '/app/failed-puzzles', icon: RotateCcw },
 ]
 
 const SETUP_ITEMS: NavItem[] = [

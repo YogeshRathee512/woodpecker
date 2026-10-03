@@ -24,6 +24,7 @@ import type {
   LichessTacticStats,
   ScrapedPositionalStats,
   DecoyStats,
+  FailedPuzzleStats,
 } from '../../lib/api'
 import { formatNumber } from '../../lib/utils'
 
@@ -435,6 +436,18 @@ function DecoyStatsSection({ stats }: { stats: DecoyStats }): React.ReactElement
   )
 }
 
+function FailedPuzzleStatsSection({ stats }: { stats: FailedPuzzleStats }): React.ReactElement {
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+        <StatCard label="Puzzles" value={String(stats.count)} />
+        <StatCard label="Average rating" value={formatNumber(stats.avgRating)} />
+      </div>
+      <ThemeBarChart themes={stats.themes} />
+    </div>
+  )
+}
+
 export function SubsetStats({ stats, collapsible = true }: SubsetStatsProps): React.ReactElement {
   const [open, setOpen] = useState(true)
   const [chartsReady, setChartsReady] = useState(false)
@@ -445,10 +458,12 @@ export function SubsetStats({ stats, collapsible = true }: SubsetStatsProps): Re
   const lichessStats = stats.sources.LICHESS_TACTIC
   const positionalStats = stats.sources.SCRAPED_POSITIONAL
   const decoyStats = stats.sources.DECOY
+  const failedPuzzleStats = stats.sources.LICHESS_FAILED_PUZZLE
   const sourceCount =
     (lichessStats !== undefined ? 1 : 0) +
     (positionalStats !== undefined ? 1 : 0) +
-    (decoyStats !== undefined ? 1 : 0)
+    (decoyStats !== undefined ? 1 : 0) +
+    (failedPuzzleStats !== undefined ? 1 : 0)
   const hasMultipleSources = sourceCount > 1
 
   const inner = (
@@ -481,6 +496,15 @@ export function SubsetStats({ stats, collapsible = true }: SubsetStatsProps): Re
             <p className="text-sm font-medium text-muted-foreground">Decoys</p>
           )}
           <DecoyStatsSection stats={decoyStats} />
+        </div>
+      )}
+
+      {failedPuzzleStats && (
+        <div className="flex flex-col gap-4">
+          {hasMultipleSources && (
+            <p className="text-sm font-medium text-muted-foreground">Lichess Failed Puzzles</p>
+          )}
+          <FailedPuzzleStatsSection stats={failedPuzzleStats} />
         </div>
       )}
     </div>
